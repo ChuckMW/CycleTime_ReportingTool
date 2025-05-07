@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cycle Time Study Report Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        form {
+            margin: 20px auto;
+            max-width: 600px;
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #bb86fc;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            background-color: #2c2c2c;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+
+        button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #121212;
+            background-color: #bb86fc;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #9e63d6;
+        }
+
+        #output {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #output a {
+            color: #03dac6;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Industrial Machine Cycle Time Study Report</h1>
+    <form id="cycleTimeForm">
+        <div class="form-group">
+            <label for="machineName">Machine Name:</label>
+            <input type="text" id="machineName" name="machineName" required>
+        </div>
+        <div class="form-group">
+            <label for="machineModel">Machine Model:</label>
+            <input type="text" id="machineModel" name="machineModel" placeholder="e.g., Model X123">
+        </div>
+        <div class="form-group">
+            <label for="machineSerial">Machine Serial Number:</label>
+            <input type="text" id="machineSerial" name="machineSerial" placeholder="e.g., SN123456">
+        </div>
+        <div class="form-group">
+            <label for="operatorName">Operator Name:</label>
+            <input type="text" id="operatorName" name="operatorName">
+        </div>
+        <div class="form-group">
+            <label for="customerName">Customer Name:</label>
+            <input type="text" id="customerName" name="customerName" placeholder="e.g., ABC Corp">
+        </div>
+        <div class="form-group">
+            <label for="location">Location:</label>
+            <input type="text" id="location" name="location" placeholder="e.g., Plant A">
+        </div>
+        <div class="form-group">
+            <label for="date">Date:</label>
+            <input type="date" id="date" name="date" required>
+        </div>
+        <div class="form-group">
+            <label for="shift">Shift:</label>
+            <select id="shift" name="shift">
+                <option value="Morning">Morning</option>
+                <option value="Afternoon">Afternoon</option>
+                <option value="Night">Night</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="productInfo">Product Information:</label>
+            <input type="text" id="productInfo" name="productInfo" placeholder="e.g., Product Name or ID">
+        </div>
+        <div class="form-group">
+            <label for="cycleData">Cycle Time Data:</label>
+            <div id="cycleInputs">
+                <div class="cycle-entry">
+                    <label>Step Name:</label>
+                    <input type="text" class="step-name" placeholder="e.g., Load Material">
+                    <label>Time (seconds):</label>
+                    <input type="number" class="step-time" placeholder="e.g., 45">
+                </div>
+            </div>
+            <button type="button" id="addCycle">Add Step</button>
+        </div>
+        <div class="form-group">
+            <label for="notes">Additional Notes:</label>
+            <textarea id="notes" name="notes" rows="4" placeholder="e.g., Observations or comments..."></textarea>
+        </div>
+        <button type="submit">Generate Report</button>
+    </form>
+
+    <div id="output">
+        <p>Your report has been generated:</p>
+        <a id="downloadLink" href="#" download="Cycle_Time_Report.pdf">Download Report</a>
+    </div>
+
+    <script>
+        document.getElementById('addCycle').addEventListener('click', function() {
+            const cycleInputs = document.getElementById('cycleInputs');
+            const entry = document.createElement('div');
+            entry.className = 'cycle-entry';
+            entry.innerHTML = `
+                <label>Step Name:</label>
+                <input type="text" class="step-name" placeholder="e.g., Process Step">
+                <label>Time (seconds):</label>
+                <input type="number" class="step-time" placeholder="e.g., 30">
+            `;
+            cycleInputs.appendChild(entry);
+        });
+
+        document.getElementById('cycleTimeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const machineName = document.getElementById('machineName').value;
+            const machineModel = document.getElementById('machineModel').value;
+            const machineSerial = document.getElementById('machineSerial').value;
+            const operatorName = document.getElementById('operatorName').value;
+            const customerName = document.getElementById('customerName').value;
+            const location = document.getElementById('location').value;
+            const date = document.getElementById('date').value;
+            const shift = document.getElementById('shift').value;
+            const productInfo = document.getElementById('productInfo').value;
+            const notes = document.getElementById('notes').value;
+            const stepNames = document.querySelectorAll('.step-name');
+            const stepTimes = document.querySelectorAll('.step-time');
+
+            const cycleData = [];
+            let totalTime = 0;
+
+            for (let i = 0; i < stepNames.length; i++) {
+                const stepName = stepNames[i].value;
+                const stepTime = parseFloat(stepTimes[i].value);
+                if (stepName && stepTime) {
+                    cycleData.push({ step: stepName, time: `${stepTime}s` });
+                    totalTime += stepTime;
+                }
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Title page
+            doc.setFontSize(18);
+            doc.text("Industrial Machine Cycle Time Study Report", 105, 20, { align: 'center' });
+            doc.setFontSize(14);
+            doc.text(`Machine Name: ${machineName}`, 20, 50);
+            doc.text(`Machine Model: ${machineModel}`, 20, 60);
+            doc.text(`Machine Serial Number: ${machineSerial}`, 20, 70);
+            doc.text(`Operator Name: ${operatorName}`, 20, 80);
+            doc.text(`Customer Name: ${customerName}`, 20, 90);
+            doc.text(`Location: ${location}`, 20, 100);
+            doc.text(`Date: ${date}`, 20, 110);
+            doc.text(`Shift: ${shift}`, 20, 120);
+            doc.text(`Product Info: ${productInfo}`, 20, 130);
+            doc.addPage();
+
+            // Report Content
+            doc.setFontSize(16);
+            doc.text("Cycle Time Details", 105, 20, { align: 'center' });
+            doc.setFontSize(12);
+
+            let yPosition = 40;
+            cycleData.forEach((data, index) => {
+                doc.text(`${index + 1}. Step: ${data.step}`, 20, yPosition);
+                doc.text(`Time: ${data.time}`, 20, yPosition + 10);
+                yPosition += 20;
+
+                // Create new page if content exceeds page length
+                if (yPosition > 270) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+            });
+
+            // Total Time
+            if (yPosition > 260) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            doc.setFontSize(14);
+            doc.text(`Total Cycle Time: ${totalTime.toFixed(2)} seconds`, 20, yPosition);
+
+            // Additional Notes
+            if (notes) {
+                if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                doc.setFontSize(12);
+                doc.text("Additional Notes:", 20, yPosition + 10);
+                doc.text(notes, 20, yPosition + 20);
+            }
+
+            // Output PDF
+            const pdfData = doc.output('blob');
+            const downloadLink = document.getElementById('downloadLink');
+            downloadLink.href = URL.createObjectURL(pdfData);
+
+            document.getElementById('output').style.display = 'block';
+        });
+    </script>
+</body>
+</html>
+
